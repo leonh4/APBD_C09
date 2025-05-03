@@ -41,7 +41,7 @@ public class WarehouseController : ControllerBase
             return NotFound("Given product hasn't been ordered");
         
         if ( await _productWarehouseService.HasOrderBeenRealisedAsync(productWarehouse.IdProduct))
-            return NotFound("Given order has already been realised");
+            return BadRequest("Given order has already been realised");
 
         try
         {
@@ -78,12 +78,14 @@ public class WarehouseController : ControllerBase
             int generatedId = await _dbService.AddProductToWarehouseAsync(productWarehouse);
             return Ok(generatedId);
         }
-        catch (SqlException e)
-        {
-            return NotFound(e.Message);
-        }
         catch (Exception e)
         {
+            // Provided IdProduct does not exist or
+            // Provided IdWarehouse does not exist or 
+            // There is no order to fulfill
+            if (e.Message.Contains("Provided") || e.Message.Contains("no order")) return NotFound(e.Message);
+            
+            // Other exceptions
             return StatusCode(500, e.Message);
         }
     }
