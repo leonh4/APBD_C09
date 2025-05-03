@@ -17,6 +17,7 @@ public class Program
         builder.Services.AddScoped<IWarehouseService, WarehouseService>();
         builder.Services.AddScoped<IOrderService, OrderService>();
         builder.Services.AddScoped<IProductWarehouseService, ProductWarehouseService>();
+        builder.Services.AddScoped<IDBService, DBService>();
 
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();

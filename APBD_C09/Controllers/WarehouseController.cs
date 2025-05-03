@@ -1,4 +1,5 @@
-﻿using APBD_C09.Models.DTOs;
+﻿using System.Data.SqlClient;
+using APBD_C09.Models.DTOs;
 using APBD_C09.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,18 +13,21 @@ public class WarehouseController : ControllerBase
     private readonly IWarehouseService _warehouseService;
     private readonly IOrderService _orderService;
     private readonly IProductWarehouseService _productWarehouseService;
+    private readonly IDBService _dbService;
 
     public WarehouseController(IProductService productService, IWarehouseService warehouseService, 
-                               IOrderService orderService, IProductWarehouseService productWarehouseService)
+                               IOrderService orderService, IProductWarehouseService productWarehouseService,
+                               IDBService dbService)
     {
         _productService = productService;
         _warehouseService = warehouseService;
         _orderService = orderService;
         _productWarehouseService = productWarehouseService;
+        _dbService = dbService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> InsertIntoProductWarehouse([FromBody] ProductWarehouseDTO productWarehouse)
+    public async Task<IActionResult> InsertIntoProductWarehouseAsync([FromBody] ProductWarehouseDTO productWarehouse)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         
@@ -62,5 +66,25 @@ public class WarehouseController : ControllerBase
         }
         
         return Ok(generatedId);
+    }
+
+    [HttpPost("AddProductToWarehouse")]
+    public async Task<IActionResult> InsertProductToWarehouseAsyncProcedure([FromBody] ProductWarehouseDTO productWarehouse)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            int generatedId = await _dbService.AddProductToWarehouseAsync(productWarehouse);
+            return Ok(generatedId);
+        }
+        catch (SqlException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(500, e.Message);
+        }
     }
 }
