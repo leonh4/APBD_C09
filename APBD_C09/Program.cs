@@ -1,3 +1,5 @@
+using APBD_C09.Services;
+
 namespace APBD_C09;
 
 public class Program
@@ -8,6 +10,13 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddAuthorization();
+        
+        builder.Services.AddControllers();
+        
+        builder.Services.AddScoped<IProductService, ProductService>();
+        builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+        builder.Services.AddScoped<IOrderService, OrderService>();
+        builder.Services.AddScoped<IProductWarehouseService, ProductWarehouseService>();
 
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
@@ -23,6 +32,8 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseAuthorization();
+        
+        app.MapControllers();
 
         app.Run();
     }
