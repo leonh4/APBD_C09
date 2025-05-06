@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlClient;
+using APBD_C09.Models.DTOs;
 
 namespace APBD_C09.Services;
 
@@ -22,23 +23,15 @@ public class ProductWarehouseService : IProductWarehouseService
         }    
     }
 
-    public async Task<int> InsertOrderAsync(int idWarehouse, int idProduct, int idOrder, int amount)
+    public async Task<int> InsertOrderAsync(ProductWarehouseDTO productWarehouseDto)
     {
-        
-        string commandPrice = "SELECT Price * @amount FROM Product WHERE IdProduct = @idProduct";
+        // SRP violation 
+        string getOrderIdCommand = "SELECT IdOrder FROM \"Order\" WHERE IdProduct = @idProduct AND Amount = @amount AND CreatedAt < @createdAt";
+        int orderId = 0;
+
+        string getPriceCommand = "SELECT Price * @amount FROM Product WHERE IdProduct = @idProduct";
         decimal price = 0;
-        
-        using (SqlConnection conn = new SqlConnection(_connectionString))
-        using (SqlCommand cmd = new SqlCommand(commandPrice, conn))
-        {
-            cmd.Parameters.AddWithValue("@idProduct", idProduct);
-            cmd.Parameters.AddWithValue("@amount", amount);
-            
-            await conn.OpenAsync();
-            var obj = await cmd.ExecuteScalarAsync();
-            price = Convert.ToDecimal(obj);
-        }
-        
+
         string commandInsert = @"INSERT INTO Product_Warehouse (IdWarehouse, IdProduct, IdOrder, Amount, Price, CreatedAt) 
                                  VALUES (@idWarehouse, @idProduct, @idOrder, @amount, @price, @createdAt)
                                  SELECT CAST(SCOPE_IDENTITY() AS int)";
@@ -47,27 +40,59 @@ public class ProductWarehouseService : IProductWarehouseService
         {
             await conn.OpenAsync();
             
-            using (var tran = (SqlTransaction)await conn.BeginTransactionAsync())
-            using (SqlCommand cmd = new SqlCommand(commandInsert, conn, tran))
-            {
-                cmd.Parameters.AddWithValue("@idWarehouse", idWarehouse);
-                cmd.Parameters.AddWithValue("@idProduct", idProduct);
-                cmd.Parameters.AddWithValue("@idOrder", idOrder);
-                cmd.Parameters.AddWithValue("@amount", amount);
-                cmd.Parameters.AddWithValue("@price", price);
-                cmd.Parameters.AddWithValue("@createdAt", DateTime.Now);
-
-                
-                try
+            using (var tran = (SqlTransaction) await conn.BeginTransactionAsync())
+            {   
+                // Getting ID Order - need for INSERT
+                using (SqlCommand cmdHelpOrderId = new SqlCommand(getOrderIdCommand, conn, tran))
                 {
-                    var obj = await cmd.ExecuteScalarAsync();
-                    await tran.CommitAsync();
-                    return Convert.ToInt32(obj);
+                    cmdHelpOrderId.Parameters.AddWithValue("@idProduct", productWarehouseDto.IdProduct);
+                    cmdHelpOrderId.Parameters.AddWithValue("@amount", productWarehouseDto.Amount);
+                    cmdHelpOrderId.Parameters.AddWithValue("@createdAt", productWarehouseDto.CreatedAt);
+                    
+                    var obj = await cmdHelpOrderId.ExecuteScalarAsync();
+                    if (obj == null)
+                    {
+                        tran.Rollback();
+                        throw new Exception();
+                    }
+                    orderId = Convert.ToInt32(obj);
                 }
-                catch (Exception ex)
+                
+                // Getting Price - needed for INSERT
+                using (SqlCommand cmdHelpPrice = new SqlCommand(getPriceCommand, conn, tran))
                 {
-                    tran.Rollback();
-                    throw;
+                    cmdHelpPrice.Parameters.AddWithValue("@idProduct", productWarehouseDto.IdProduct);
+                    cmdHelpPrice.Parameters.AddWithValue("@amount", productWarehouseDto.Amount);
+                    
+                   var obj = await cmdHelpPrice.ExecuteScalarAsync();
+                   if (obj == null)
+                   {
+                       tran.Rollback();
+                       throw new Exception();
+                   }
+                   price = Convert.ToInt32(obj);
+                }
+
+                using (SqlCommand cmdInsert = new SqlCommand(commandInsert, conn, tran))
+                {
+                    cmdInsert.Parameters.AddWithValue("@idWarehouse", productWarehouseDto.IdWarehouse);
+                    cmdInsert.Parameters.AddWithValue("@idProduct", productWarehouseDto.IdProduct);
+                    cmdInsert.Parameters.AddWithValue("@idOrder", orderId);
+                    cmdInsert.Parameters.AddWithValue("@amount", productWarehouseDto.Amount);
+                    cmdInsert.Parameters.AddWithValue("@price", price);
+                    cmdInsert.Parameters.AddWithValue("@createdAt", DateTime.Now);
+
+                    try
+                    {
+                        var obj = await cmdInsert.ExecuteScalarAsync();
+                        await tran.CommitAsync();
+                        return Convert.ToInt32(obj);
+                    }
+                    catch (Exception ex)
+                    {
+                        await tran.RollbackAsync();
+                        throw;
+                    }
                 }
             }
         }

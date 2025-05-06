@@ -51,14 +51,11 @@ public class WarehouseController : ControllerBase
         {
             return StatusCode(500, e.Message);
         }
-
-        int orderId = await _orderService.GetOrderIdAsync(productWarehouse.IdProduct, productWarehouse.Amount, productWarehouse.CreatedAt);
-        int generatedId;
         
+        int generatedId;
         try
         {
-            generatedId = await _productWarehouseService.InsertOrderAsync(productWarehouse.IdWarehouse,
-                productWarehouse.IdProduct, orderId, productWarehouse.Amount);
+            generatedId = await _productWarehouseService.InsertOrderAsync(productWarehouse);
         }
         catch (Exception e)
         {

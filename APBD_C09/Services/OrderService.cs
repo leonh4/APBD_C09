@@ -49,21 +49,4 @@ public class OrderService : IOrderService
             }
         }
     }
-
-    public async Task<int> GetOrderIdAsync(int idProduct, int amount, DateTime createdAt)
-    {
-        string command = "SELECT IdOrder FROM \"Order\" WHERE IdProduct = @idProduct AND Amount = @amount AND CreatedAt < @createdAt";
-        
-        using (SqlConnection conn = new SqlConnection(_connectionString))
-        using (SqlCommand cmd = new SqlCommand(command, conn))
-        {
-            cmd.Parameters.AddWithValue("@idProduct", idProduct);
-            cmd.Parameters.AddWithValue("@amount", amount);
-            cmd.Parameters.AddWithValue("@createdAt", createdAt);
-            
-            await conn.OpenAsync();
-            var obj = await cmd.ExecuteScalarAsync();
-            return Convert.ToInt32(obj);
-        }   
-    }
 }
